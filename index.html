@@ -448,21 +448,53 @@ function renderGenrePills(){
 async function loadHomeSections(){
   const c=$('homeSections');if(!c)return;
   c.innerHTML='';
-  for(const section of HOME_SECTIONS){
+  // Load only first 3 sections immediately, rest on scroll (lazy)
+  HOME_SECTIONS.forEach((section,i)=>{
     const block=document.createElement('div');
     block.className='section-block';
-    block.innerHTML=`<div class="section-header"><div class="section-title">${section.title}</div></div><div class="h-scroll" id="hscroll_${section.q.replace(/\s/g,'_')}"><div class="loading-row" style="padding:10px 0;"><div class="spinner"></div></div></div>`;
+    const scrollId='hscroll_'+section.q.replace(/\s/g,'_');
+    block.innerHTML=`<div class="section-header"><div class="section-title">${section.title}</div></div><div class="h-scroll" id="${scrollId}"><div class="loading-row" style="padding:10px 0;"><div class="spinner"></div></div></div>`;
     c.appendChild(block);
-    fetchSection(section.q, `hscroll_${section.q.replace(/\s/g,'_')}`);
-  }
+    if(i<3){
+      // Load first 3 immediately
+      fetchSection(section.q, scrollId);
+    } else {
+      // Lazy load the rest when visible
+      const obs=new IntersectionObserver((entries,observer)=>{
+        if(entries[0].isIntersecting){
+          fetchSection(section.q, scrollId);
+          observer.disconnect();
+        }
+      },{threshold:0.1,rootMargin:'200px'});
+      obs.observe(block);
+    }
+  });
+}
+
+// ── CACHE SYSTEM ──
+const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 hours
+function getCached(key){
+  try{const raw=localStorage.getItem('cache_'+key);if(!raw)return null;const{data,ts}=JSON.parse(raw);if(Date.now()-ts>CACHE_DURATION)return null;return data;}catch(e){return null;}
+}
+function setCache(key,data){
+  try{localStorage.setItem('cache_'+key,JSON.stringify({data,ts:Date.now()}));}catch(e){}
+}
+
+async function ytSearch(q,maxResults=12){
+  const cacheKey=q+'_'+maxResults;
+  const cached=getCached(cacheKey);
+  if(cached) return cached;
+  const url=`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=${maxResults}&q=${encodeURIComponent(q)}&key=${YT_KEY}`;
+  const data=await(await fetch(url)).json();
+  if(data.error)throw new Error(data.error.message);
+  const items=parseItems(data.items||[]);
+  setCache(cacheKey,items);
+  return items;
 }
 
 async function fetchSection(q,containerId){
   try{
-    const url=`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=12&q=${encodeURIComponent(q)}&key=${YT_KEY}`;
-    const data=await(await fetch(url)).json();
-    if(data.error)throw new Error(data.error.message);
-    const items=parseItems(data.items||[]);
+    const items=await ytSearch(q,12);
     const c=$(containerId);if(!c)return;
     c.innerHTML='';
     items.forEach((v,i)=>{
@@ -479,10 +511,8 @@ async function loadGenreSection(idx){
   const c=$('homeSections');if(!c)return;
   c.innerHTML=`<div class="loading-row"><div class="spinner"></div>Chargement ${GENRES[idx].label}...</div>`;
   try{
-    const url=`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=24&q=${encodeURIComponent(GENRES[idx].q)}&key=${YT_KEY}`;
-    const data=await(await fetch(url)).json();
-    if(data.error)throw new Error(data.error.message);
-    results=parseItems(data.items||[]);currentList=results;
+    results=await ytSearch(GENRES[idx].q,24);
+    currentList=results;
     c.innerHTML=`<div class="section-header"><div class="section-title">${GENRES[idx].label} <span style="font-size:12px;color:var(--muted);font-weight:400;">(${results.length})</span></div></div><div class="cards-grid" id="grid"></div>`;
     renderGrid(results);
   }catch(e){c.innerHTML=`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">${e.message}</div></div>`;}
@@ -527,10 +557,7 @@ async function doSearch(){
   $('searchBtn').disabled=true;$('searchBtn').textContent='...';
   $('mainContent').innerHTML='<div class="loading-row"><div class="spinner"></div>Recherche en cours...</div>';
   try{
-    const url=`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=24&q=${encodeURIComponent(q)}&key=${YT_KEY}`;
-    const data=await(await fetch(url)).json();
-    if(data.error)throw new Error(data.error.message);
-    results=parseItems(data.items||[]);currentList=results;
+    results=await ytSearch(q,24);currentList=results;
     $('mainContent').innerHTML=`<div class="section-header"><div class="section-title">Résultats <span style="font-size:12px;color:var(--muted);font-weight:400;">(${results.length})</span></div></div><div class="cards-grid" id="grid"></div>`;
     renderGrid(results);
   }catch(e){$('mainContent').innerHTML=`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Erreur : ${e.message}</div></div>`;}
