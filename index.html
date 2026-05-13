@@ -80,7 +80,7 @@
     .h-thumb{width:32px;height:32px;border-radius:5px;object-fit:cover;flex-shrink:0;background:#222;}
     .h-info{flex:1;min-width:0;} .h-title{font-size:11.5px;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} .h-ch{font-size:10.5px;color:var(--muted);}
     /* MAIN */
-    .main{background:linear-gradient(180deg,#18103a 0%,var(--bg) 35%);padding:20px 24px;overflow-y:auto;grid-row:1/2;}
+    .main{background:linear-gradient(180deg,var(--accent-glow) 0%,var(--bg) 35%);padding:20px 24px;overflow-y:auto;grid-row:1/2;}
     .search-row{display:flex;gap:10px;margin-bottom:20px;}
     .search-input{flex:1;background:rgba(255,255,255,.07);border:0.5px solid rgba(255,255,255,.13);border-radius:25px;padding:11px 18px;color:#fff;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s;} .search-input::placeholder{color:var(--muted);} .search-input:focus{border-color:rgba(167,139,250,.6);}
     .search-btn{background:var(--purple);border:none;border-radius:25px;padding:11px 22px;color:#fff;font-size:14px;font-family:inherit;font-weight:600;cursor:pointer;transition:opacity .12s;} .search-btn:hover{opacity:.85;} .search-btn:disabled{opacity:.4;cursor:default;}
@@ -107,7 +107,7 @@
     /* Playlist page */
     .pl-header{display:flex;gap:20px;align-items:flex-end;margin-bottom:22px;padding-bottom:18px;border-bottom:0.5px solid var(--border);}
     .pl-cover{width:120px;height:120px;border-radius:12px;object-fit:cover;flex-shrink:0;background:var(--bg3);}
-    .pl-cover-ph{width:120px;height:120px;border-radius:12px;flex-shrink:0;background:linear-gradient(135deg,var(--purple-dark),#4c1d95);display:flex;align-items:center;justify-content:center;}
+    .pl-cover-ph{width:120px;height:120px;border-radius:12px;flex-shrink:0;background:linear-gradient(135deg,var(--purple-dark),var(--purple));display:flex;align-items:center;justify-content:center;}
     .pl-meta{flex:1;min-width:0;} .pl-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
     .pl-name{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px;} .pl-desc{font-size:13px;color:var(--muted);margin-bottom:10px;}
     .pl-actions{display:flex;gap:8px;flex-wrap:wrap;}
@@ -128,14 +128,14 @@
     @keyframes spin{to{transform:rotate(360deg);}}
     .load-more{height:60px;display:flex;align-items:center;justify-content:center;}
     /* Guest banner */
-    .guest-banner{background:linear-gradient(135deg,rgba(124,58,237,.2),rgba(167,139,250,.1));border:0.5px solid rgba(167,139,250,.3);border-radius:12px;padding:13px 18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+    .guest-banner{background:linear-gradient(135deg,var(--accent-glow),var(--dim));border:0.5px solid rgba(167,139,250,.3);border-radius:12px;padding:13px 18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
     .guest-banner p{font-size:13px;color:rgba(255,255,255,.7);line-height:1.5;}
     .banner-btn{background:var(--purple);border:none;border-radius:8px;padding:8px 14px;color:#fff;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;flex-shrink:0;}
     /* PLAYER BAR */
     .player-bar{grid-column:1/3;grid-row:2/3;background:rgba(10,10,18,.98);border-top:0.5px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;}
     .now-playing{display:flex;align-items:center;gap:12px;width:210px;flex-shrink:0;}
     .now-thumb-wrap{width:46px;height:46px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#222;} .now-thumb-wrap img{width:100%;height:100%;object-fit:cover;}
-    .now-placeholder{width:100%;height:100%;background:linear-gradient(135deg,#6d28d9,#4c1d95);display:flex;align-items:center;justify-content:center;}
+    .now-placeholder{width:100%;height:100%;background:linear-gradient(135deg,var(--purple-dark),var(--purple));display:flex;align-items:center;justify-content:center;}
     .now-info{flex:1;min-width:0;} .now-title{font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} .now-ch{font-size:11px;color:var(--muted);margin-top:2px;}
     .controls{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;}
     .ctrl-btns{display:flex;align-items:center;gap:20px;}
@@ -347,7 +347,7 @@ const GENRES=[
   {label:'🌊 Chill',       q:'lofi chill beats'},
   {label:'🎹 Classique',   q:'classical music best'},
   {label:'🌍 Afrobeats',   q:'afrobeats 2025'},
-  {label:'🎷 Jazz',        q:'jazz music best'},
+  {label:'🎷 Jazz',        q:'jazz music best'}
 ];
 
 const HOME_SECTIONS=[
@@ -360,7 +360,7 @@ const HOME_SECTIONS=[
   {title:'🌍 Afrobeats',            q:'afrobeats hits 2025'},
   {title:'🎸 Rock',                 q:'rock classic hits'},
   {title:'🎷 Jazz & Blues',         q:'jazz blues music'},
-  {title:'🎹 Classique',            q:'classical piano best'},
+  {title:'🎹 Classique',            q:'classical piano best'}
 ];
 
 // ── AUTH ──
@@ -770,8 +770,8 @@ const THEMES = [
   {id:'gold',name:'Gold',accent:'#fbbf24',accentDark:'#d97706',bg:'#141008',bg2:'#1c1610',bg3:'#2a2018',text:'rgba(255,255,255,0.85)',muted:'rgba(255,255,255,0.35)',border:'rgba(251,191,36,0.1)',dim:'rgba(251,191,36,0.08)',dark:true},
   {id:'neon',name:'Néon',accent:'#c084fc',accentDark:'#9333ea',bg:'#0c0015',bg2:'#12001f',bg3:'#1c0030',text:'rgba(255,255,255,0.9)',muted:'rgba(255,255,255,0.35)',border:'rgba(192,132,252,0.12)',dim:'rgba(192,132,252,0.08)',dark:true},
   {id:'arctic',name:'Arctique',accent:'#22d3ee',accentDark:'#0891b2',bg:'#0a1519',bg2:'#0f1e24',bg3:'#152c34',text:'rgba(255,255,255,0.85)',muted:'rgba(255,255,255,0.35)',border:'rgba(34,211,238,0.1)',dim:'rgba(34,211,238,0.08)',dark:true},
-  {id:'light',name:'Clair',accent:'#7c3aed',accentDark:'#6d28d9',bg:'#f8f7ff',bg2:'#ffffff',bg3:'#ede9fe',text:'rgba(0,0,0,0.8)',muted:'rgba(0,0,0,0.4)',border:'rgba(0,0,0,0.08)',dim:'rgba(124,58,237,0.08)',dark:false},
-  {id:'cream',name:'Crème',accent:'#d97706',accentDark:'#b45309',bg:'#fdf8f0',bg2:'#ffffff',bg3:'#fef3c7',text:'rgba(0,0,0,0.8)',muted:'rgba(0,0,0,0.4)',border:'rgba(0,0,0,0.08)',dim:'rgba(217,119,6,0.08)',dark:false},
+  
+  
 ];
 let currentThemeId='midnight';
 
