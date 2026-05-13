@@ -457,12 +457,12 @@ async function loadHomeSections(){
     c.appendChild(block);
     if(i<3){
       // Load first 3 immediately
-      fetchSection(section.q, scrollId);
+      fetchSection(section.q, scrollId, section.chart);
     } else {
       // Lazy load the rest when visible
       const obs=new IntersectionObserver((entries,observer)=>{
         if(entries[0].isIntersecting){
-          fetchSection(section.q, scrollId);
+          fetchSection(section.q, scrollId, section.chart);
           observer.disconnect();
         }
       },{threshold:0.1,rootMargin:'200px'});
@@ -480,26 +480,95 @@ function setCache(key,data){
   try{localStorage.setItem('cache_'+key,JSON.stringify({data,ts:Date.now()}));}catch(e){}
 }
 
-async function ytSearch(q,maxResults=12){
-  const cacheKey=q+'_'+maxResults;
+// ── DEEZER API (recherche illimitée, sans clé) ──
+const DEEZER_PROXY='https://corsproxy.io/?';
+
+async function deezerSearch(q,limit=12){
+  const cacheKey='dz_'+q+'_'+limit;
   const cached=getCached(cacheKey);
   if(cached) return cached;
-  const url=`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=${maxResults}&q=${encodeURIComponent(q)}&key=${YT_KEY}`;
-  const data=await(await fetch(url)).json();
-  if(data.error)throw new Error(data.error.message);
-  const items=parseItems(data.items||[]);
+  const url=DEEZER_PROXY+encodeURIComponent('https://api.deezer.com/search?q='+encodeURIComponent(q)+'&limit='+limit);
+  const res=await fetch(url);
+  const data=await res.json();
+  if(!data.data) throw new Error('Erreur Deezer');
+  const items=data.data.map(t=>({
+    id:null,
+    deezerId:t.id,
+    title:t.title,
+    channel:t.artist.name,
+    thumb:t.album.cover_medium||t.album.cover,
+    duration:t.duration,
+    preview:t.preview,
+    ytQuery:t.artist.name+' '+t.title
+  }));
   setCache(cacheKey,items);
   return items;
 }
 
-async function fetchSection(q,containerId){
+async function deezerChart(limit=12){
+  const cacheKey='dz_chart_'+limit;
+  const cached=getCached(cacheKey);
+  if(cached) return cached;
+  const url=DEEZER_PROXY+encodeURIComponent('https://api.deezer.com/chart/0/tracks?limit='+limit);
+  const res=await fetch(url);
+  const data=await res.json();
+  if(!data.data) throw new Error('Erreur Deezer chart');
+  const items=data.data.map(t=>({
+    id:null,
+    deezerId:t.id,
+    title:t.title,
+    channel:t.artist.name,
+    thumb:t.album.cover_medium||t.album.cover,
+    duration:t.duration,
+    preview:t.preview,
+    ytQuery:t.artist.name+' '+t.title
+  }));
+  setCache(cacheKey,items);
+  return items;
+}
+
+// Find YouTube video ID for a Deezer track (uses YouTube search but only 1 request per song)
+async function findYouTubeId(track){
+  if(track.id) return track.id;
+  const cacheKey='yt_id_'+track.deezerId;
+  const cached=getCached(cacheKey);
+  if(cached){track.id=cached;return cached;}
+  // Use Invidious API (no quota) to find the YouTube video
+  const invInstances=['https://vid.puffyan.us','https://invidious.snopyta.org','https://inv.nadeko.net','https://invidious.nerdvpn.de'];
+  for(const inst of invInstances){
+    try{
+      const url=inst+'/api/v1/search?q='+encodeURIComponent(track.ytQuery)+'&type=video&fields=videoId&limit=1';
+      const res=await fetch(url);
+      const data=await res.json();
+      if(data&&data[0]&&data[0].videoId){
+        track.id=data[0].videoId;
+        setCache(cacheKey,track.id);
+        return track.id;
+      }
+    }catch(e){continue;}
+  }
+  // Fallback: use YouTube API (costs 100 units but rare)
   try{
-    const items=await ytSearch(q,12);
+    const url='https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=1&q='+encodeURIComponent(track.ytQuery)+'&key='+YT_KEY;
+    const res=await fetch(url);
+    const data=await res.json();
+    if(data.items&&data.items[0]){
+      track.id=data.items[0].id.videoId;
+      setCache(cacheKey,track.id);
+      return track.id;
+    }
+  }catch(e){}
+  throw new Error('Impossible de trouver cette chanson');
+}
+
+async function fetchSection(q,containerId,isChart){
+  try{
+    const items=isChart?await deezerChart(12):await deezerSearch(q,12);
     const c=$(containerId);if(!c)return;
     c.innerHTML='';
     items.forEach((v,i)=>{
       const card=document.createElement('div');
-      card.className='h-card'+(currentList[currentIdx]?.id===v.id?' playing':'');
+      card.className='h-card';
       card.innerHTML=`<div class="thumb-wrap"><img class="thumb-img" src="${v.thumb}" alt="" loading="lazy"/><div class="play-overlay"><svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg></div></div><div class="card-info"><div class="card-title">${v.title}</div><div class="card-ch" style="font-size:10.5px;">${v.channel}</div></div>`;
       card.onclick=()=>{currentList=items;playTrack(i);};
       c.appendChild(card);
@@ -511,7 +580,7 @@ async function loadGenreSection(idx){
   const c=$('homeSections');if(!c)return;
   c.innerHTML=`<div class="loading-row"><div class="spinner"></div>Chargement ${GENRES[idx].label}...</div>`;
   try{
-    results=await ytSearch(GENRES[idx].q,24);
+    results=await deezerSearch(GENRES[idx].q,24);
     currentList=results;
     c.innerHTML=`<div class="section-header"><div class="section-title">${GENRES[idx].label} <span style="font-size:12px;color:var(--muted);font-weight:400;">(${results.length})</span></div></div><div class="cards-grid" id="grid"></div>`;
     renderGrid(results);
@@ -526,17 +595,22 @@ function setupInfiniteScroll(){
   obs.observe(trigger);
 }
 
+let deezerOffset=0;
 async function loadMoreResults(){
   if(homeLoading)return;
   homeLoading=true;
+  deezerOffset+=24;
   const q=GENRES[activeGenre].q;
-  let url=`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=16&q=${encodeURIComponent(q)}&key=${YT_KEY}`;
-  if(homePageToken) url+=`&pageToken=${homePageToken}`;
   try{
-    const data=await(await fetch(url)).json();
-    if(data.error)throw new Error();
-    homePageToken=data.nextPageToken||null;
-    const newItems=parseItems(data.items||[]);
+    const url=DEEZER_PROXY+encodeURIComponent('https://api.deezer.com/search?q='+encodeURIComponent(q)+'&limit=16&index='+deezerOffset);
+    const res=await fetch(url);
+    const data=await res.json();
+    if(!data.data)throw new Error();
+    const newItems=data.data.map(t=>({
+      id:null,deezerId:t.id,title:t.title,channel:t.artist.name,
+      thumb:t.album.cover_medium||t.album.cover,duration:t.duration,
+      preview:t.preview,ytQuery:t.artist.name+' '+t.title
+    }));
     homeResults=[...homeResults,...newItems];
     const grid=$('grid');
     if(grid){
@@ -557,7 +631,7 @@ async function doSearch(){
   $('searchBtn').disabled=true;$('searchBtn').textContent='...';
   $('mainContent').innerHTML='<div class="loading-row"><div class="spinner"></div>Recherche en cours...</div>';
   try{
-    results=await ytSearch(q,24);currentList=results;
+    results=await deezerSearch(q,24);currentList=results;
     $('mainContent').innerHTML=`<div class="section-header"><div class="section-title">Résultats <span style="font-size:12px;color:var(--muted);font-weight:400;">(${results.length})</span></div></div><div class="cards-grid" id="grid"></div>`;
     renderGrid(results);
   }catch(e){$('mainContent').innerHTML=`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Erreur : ${e.message}</div></div>`;}
@@ -585,13 +659,20 @@ function renderGrid(list){
 }
 
 // ── PLAY ──
-function playTrack(idx){
+async function playTrack(idx){
   if(!currentList[idx])return;
   currentIdx=idx;const v=currentList[idx];
   $('nowTitle').textContent=v.title;$('nowCh').textContent=v.channel;
   $('nowThumbImg').src=v.thumb;$('nowThumbImg').style.display='block';$('nowPlaceholder').style.display='none';
-  if(ytReady){player.loadVideoById(v.id);}else{pendingId=v.id;}
-  isPlaying=true;updatePlayBtn();addToHistory(v);
+  // Find YouTube ID if not already resolved
+  try{
+    const ytId=await findYouTubeId(v);
+    if(ytReady){player.loadVideoById(ytId);}else{pendingId=ytId;}
+    isPlaying=true;updatePlayBtn();addToHistory(v);
+  }catch(e){
+    $('nowTitle').textContent='Erreur - chanson introuvable';
+    console.error(e);
+  }
   const grid=$('grid');if(grid)renderGrid(currentList);
 }
 function togglePlay(){if(currentIdx<0||!ytReady)return;isPlaying?player.pauseVideo():player.playVideo();}
