@@ -480,31 +480,32 @@ function setCache(key,data){
   try{localStorage.setItem('cache_'+key,JSON.stringify({data,ts:Date.now()}));}catch(e){}
 }
 
-// ── DEEZER API (recherche illimitée, sans clé) ──
-const CORS_PROXIES=[
-  url=>'https://api.allorigins.win/raw?url='+encodeURIComponent(url),
-  url=>'https://corsproxy.io/?'+encodeURIComponent(url),
-  url=>'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(url),
-  url=>'https://thingproxy.freeboard.io/fetch/'+url,
-];
-
-async function fetchWithProxy(targetUrl){
-  for(const makeUrl of CORS_PROXIES){
-    try{
-      const res=await fetch(makeUrl(targetUrl),{signal:AbortSignal.timeout(8000)});
-      if(!res.ok) continue;
-      const data=await res.json();
-      if(data) return data;
-    }catch(e){continue;}
-  }
-  throw new Error('Tous les proxies ont échoué');
+// ── DEEZER API via JSONP (aucun proxy, aucune limite) ──
+let jsonpCounter=0;
+function jsonp(url){
+  return new Promise((resolve,reject)=>{
+    const cbName='dz_cb_'+(jsonpCounter++);
+    const timeout=setTimeout(()=>{reject(new Error('Timeout Deezer'));cleanup();},10000);
+    function cleanup(){
+      delete window[cbName];
+      const s=document.getElementById(cbName);
+      if(s)s.remove();
+      clearTimeout(timeout);
+    }
+    window[cbName]=data=>{cleanup();resolve(data);};
+    const script=document.createElement('script');
+    script.id=cbName;
+    script.src=url+(url.includes('?')?'&':'?')+'output=jsonp&callback='+cbName;
+    script.onerror=()=>{cleanup();reject(new Error('Erreur Deezer'));};
+    document.head.appendChild(script);
+  });
 }
 
 function parseDeezerTracks(data){
   return (data||[]).map(t=>({
     id:null,
     deezerId:t.id,
-    title:t.title||t.title_short,
+    title:t.title||t.title_short||'',
     channel:t.artist?.name||'Inconnu',
     thumb:t.album?.cover_medium||t.album?.cover||'',
     duration:t.duration,
@@ -517,7 +518,7 @@ async function deezerSearch(q,limit=12){
   const cacheKey='dz_'+q+'_'+limit;
   const cached=getCached(cacheKey);
   if(cached) return cached;
-  const data=await fetchWithProxy('https://api.deezer.com/search?q='+encodeURIComponent(q)+'&limit='+limit);
+  const data=await jsonp('https://api.deezer.com/search?q='+encodeURIComponent(q)+'&limit='+limit);
   if(!data.data) throw new Error('Erreur Deezer');
   const items=parseDeezerTracks(data.data);
   setCache(cacheKey,items);
@@ -528,7 +529,7 @@ async function deezerChart(limit=12){
   const cacheKey='dz_chart_'+limit;
   const cached=getCached(cacheKey);
   if(cached) return cached;
-  const data=await fetchWithProxy('https://api.deezer.com/chart/0/tracks?limit='+limit);
+  const data=await jsonp('https://api.deezer.com/chart/0/tracks?limit='+limit);
   if(!data.data) throw new Error('Erreur Deezer chart');
   const items=parseDeezerTracks(data.data);
   setCache(cacheKey,items);
@@ -610,7 +611,7 @@ async function loadMoreResults(){
   deezerOffset+=24;
   const q=GENRES[activeGenre].q;
   try{
-    const data=await fetchWithProxy('https://api.deezer.com/search?q='+encodeURIComponent(q)+'&limit=16&index='+deezerOffset);
+    const data=await jsonp('https://api.deezer.com/search?q='+encodeURIComponent(q)+'&limit=16&index='+deezerOffset);
     if(!data.data)throw new Error();
     const newItems=parseDeezerTracks(data.data);
     homeResults=[...homeResults,...newItems];
