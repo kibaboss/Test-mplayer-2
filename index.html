@@ -433,6 +433,7 @@ async function loadHome(){
   setupInfiniteScroll();
 }
 
+function resetOffset(){deezerOffset=0;homeResults=[];}
 function renderGenrePills(){
   const c=$('genrePills');if(!c)return;
   c.innerHTML='';
@@ -440,7 +441,7 @@ function renderGenrePills(){
     const b=document.createElement('button');
     b.className='genre-pill'+(i===activeGenre?' active':'');
     b.textContent=g.label;
-    b.onclick=()=>{activeGenre=i;renderGenrePills();loadGenreSection(i);};
+    b.onclick=()=>{activeGenre=i;resetOffset();renderGenrePills();loadGenreSection(i);};
     c.appendChild(b);
   });
 }
@@ -448,27 +449,55 @@ function renderGenrePills(){
 async function loadHomeSections(){
   const c=$('homeSections');if(!c)return;
   c.innerHTML='';
-  // Load only first 3 sections immediately, rest on scroll (lazy)
+
+  // Personalized "Pour toi" section based on history
+  if(history.length>=2){
+    const block=document.createElement('div');
+    block.className='section-block';
+    block.innerHTML='<div class="section-header"><div class="section-title">✨ Pour toi</div></div><div class="h-scroll" id="hscroll_perso"><div class="loading-row" style="padding:10px 0;"><div class="spinner"></div></div></div>';
+    c.appendChild(block);
+    loadPersonalized();
+  }
+
   HOME_SECTIONS.forEach((section,i)=>{
     const block=document.createElement('div');
     block.className='section-block';
-    const scrollId='hscroll_'+section.q.replace(/\s/g,'_');
-    block.innerHTML=`<div class="section-header"><div class="section-title">${section.title}</div></div><div class="h-scroll" id="${scrollId}"><div class="loading-row" style="padding:10px 0;"><div class="spinner"></div></div></div>`;
+    const scrollId='hscroll_sec_'+i;
+    block.innerHTML='<div class="section-header"><div class="section-title">'+section.title+'</div></div><div class="h-scroll" id="'+scrollId+'"><div class="loading-row" style="padding:10px 0;"><div class="spinner"></div></div></div>';
     c.appendChild(block);
+    const load=()=>fetchSection(section, scrollId);
     if(i<3){
-      // Load first 3 immediately
-      fetchSection(section.q, scrollId, section.chart);
+      load();
     } else {
-      // Lazy load the rest when visible
       const obs=new IntersectionObserver((entries,observer)=>{
-        if(entries[0].isIntersecting){
-          fetchSection(section.q, scrollId, section.chart);
-          observer.disconnect();
-        }
+        if(entries[0].isIntersecting){load();observer.disconnect();}
       },{threshold:0.1,rootMargin:'200px'});
       obs.observe(block);
     }
   });
+}
+
+async function loadPersonalized(){
+  try{
+    // Get unique artists from history
+    const artists=[...new Set(history.map(h=>h.channel))].slice(0,3);
+    let persoItems=[];
+    for(const artist of artists){
+      const tracks=await deezerSearch(artist,8);
+      persoItems.push(...tracks);
+    }
+    persoItems=dedup(persoItems,2);
+    persoItems=shuffle(persoItems).slice(0,15);
+    const c=$('hscroll_perso');if(!c)return;
+    c.innerHTML='';
+    persoItems.forEach((v,i)=>{
+      const card=document.createElement('div');
+      card.className='h-card';
+      card.innerHTML='<div class="thumb-wrap"><img class="thumb-img" src="'+v.thumb+'" alt="" loading="lazy"/><div class="play-overlay"><svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg></div></div><div class="card-info"><div class="card-title">'+v.title+'</div><div class="card-ch" style="font-size:10.5px;">'+v.channel+'</div></div>';
+      card.onclick=()=>{currentList=persoItems;playTrack(i);};
+      c.appendChild(card);
+    });
+  }catch(e){const c=$('hscroll_perso');if(c)c.innerHTML='';}
 }
 
 // ── CACHE SYSTEM ──
@@ -536,6 +565,56 @@ async function deezerChart(limit=12){
   return items;
 }
 
+async function deezerPlaylist(playlistId,limit=40){
+  const cacheKey='dz_pl_'+playlistId+'_'+limit;
+  const cached=getCached(cacheKey);
+  if(cached) return cached;
+  const data=await jsonp('https://api.deezer.com/playlist/'+playlistId+'/tracks?limit='+limit);
+  if(!data.data) throw new Error('Erreur Deezer playlist');
+  const items=parseDeezerTracks(data.data);
+  setCache(cacheKey,items);
+  return items;
+}
+
+async function deezerArtistTop(artistId,limit=10){
+  const cacheKey='dz_artist_'+artistId+'_'+limit;
+  const cached=getCached(cacheKey);
+  if(cached) return cached;
+  const data=await jsonp('https://api.deezer.com/artist/'+artistId+'/top?limit='+limit);
+  if(!data.data) throw new Error('Erreur artiste');
+  const items=parseDeezerTracks(data.data);
+  setCache(cacheKey,items);
+  return items;
+}
+
+async function deezerRelated(artistId,limit=10){
+  const cacheKey='dz_related_'+artistId;
+  const cached=getCached(cacheKey);
+  if(cached) return cached;
+  const data=await jsonp('https://api.deezer.com/artist/'+artistId+'/related?limit='+limit);
+  if(!data.data) return [];
+  const items=data.data.map(a=>({id:a.id,name:a.name,picture:a.picture_medium}));
+  setCache(cacheKey,items);
+  return items;
+}
+
+// Deduplicate: max 2 songs per artist
+function dedup(tracks,maxPerArtist=2){
+  const count={};
+  return tracks.filter(t=>{
+    const key=t.channel.toLowerCase();
+    count[key]=(count[key]||0)+1;
+    return count[key]<=maxPerArtist;
+  });
+}
+
+// Shuffle array
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+
 // Find YouTube video ID for a Deezer track (uses YouTube search but only 1 request per song)
 async function findYouTubeId(track){
   if(track.id) return track.id;
@@ -570,9 +649,16 @@ async function findYouTubeId(track){
   throw new Error('Impossible de trouver cette chanson');
 }
 
-async function fetchSection(q,containerId,isChart){
+async function fetchSection(section,containerId){
   try{
-    const items=isChart?await deezerChart(12):await deezerSearch(q,12);
+    let items;
+    if(section.type==='chart'){
+      items=await deezerPlaylist(section.chartId,40);
+    }else{
+      items=await deezerSearch(section.q,30);
+    }
+    items=dedup(items,2);
+    items=shuffle(items).slice(0,15);
     const c=$(containerId);if(!c)return;
     c.innerHTML='';
     items.forEach((v,i)=>{
@@ -587,13 +673,14 @@ async function fetchSection(q,containerId,isChart){
 
 async function loadGenreSection(idx){
   const c=$('homeSections');if(!c)return;
-  c.innerHTML=`<div class="loading-row"><div class="spinner"></div>Chargement ${GENRES[idx].label}...</div>`;
+  c.innerHTML='<div class="loading-row"><div class="spinner"></div>Chargement '+GENRES[idx].label+'...</div>';
   try{
-    results=await deezerSearch(GENRES[idx].q,24);
+    let raw=await deezerSearch(GENRES[idx].q,40);
+    results=dedup(raw,2);
     currentList=results;
-    c.innerHTML=`<div class="section-header"><div class="section-title">${GENRES[idx].label} <span style="font-size:12px;color:var(--muted);font-weight:400;">(${results.length})</span></div></div><div class="cards-grid" id="grid"></div>`;
+    c.innerHTML='<div class="section-header"><div class="section-title">'+GENRES[idx].label+' <span style="font-size:12px;color:var(--muted);font-weight:400;">('+results.length+')</span></div></div><div class="cards-grid" id="grid"></div>';
     renderGrid(results);
-  }catch(e){c.innerHTML=`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">${e.message}</div></div>`;}
+  }catch(e){c.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">'+e.message+'</div></div>';}
 }
 
 function setupInfiniteScroll(){
@@ -611,10 +698,15 @@ async function loadMoreResults(){
   deezerOffset+=24;
   const q=GENRES[activeGenre].q;
   try{
-    const data=await jsonp('https://api.deezer.com/search?q='+encodeURIComponent(q)+'&limit=16&index='+deezerOffset);
+    const data=await jsonp('https://api.deezer.com/search?q='+encodeURIComponent(q)+'&limit=24&index='+deezerOffset);
     if(!data.data)throw new Error();
-    const newItems=parseDeezerTracks(data.data);
+    let newItems=parseDeezerTracks(data.data);
+    // Dedup against existing results
+    const existingIds=new Set(homeResults.map(r=>r.deezerId));
+    newItems=newItems.filter(t=>!existingIds.has(t.deezerId));
+    newItems=dedup(newItems,2);
     homeResults=[...homeResults,...newItems];
+    currentList=homeResults;
     const grid=$('grid');
     if(grid){
       newItems.forEach((v,i)=>{
