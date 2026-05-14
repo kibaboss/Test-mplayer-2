@@ -338,31 +338,29 @@ const $=id=>document.getElementById(id);
 
 // ── GENRES pour la home ──
 const GENRES=[
-  {label:'🔥 Tendances',   q:'', isHome:true},
-  {label:'🎵 Pop',         q:'pop', playlistId:1996494362},
-  {label:'🎤 Hip-Hop',     q:'rap hip hop', playlistId:1996494382},
-  {label:'💜 R&B',         q:'rnb soul r&b', playlistId:1996494402},
-  {label:'🎸 Rock',        q:'rock alternative indie', playlistId:1996494422},
-  {label:'⚡ Électro',      q:'electronic dance edm house techno', playlistId:1996494442},
-  {label:'🌊 Chill',       q:'chill lofi relaxation ambient'},
-  {label:'🎹 Classique',   q:'classical piano orchestra'},
-  {label:'🌍 Afrobeats',   q:'afrobeats afro amapiano'},
-  {label:'🎷 Jazz',        q:'jazz blues soul'}
+  {label:'🔥 Tendances',   isHome:true},
+  {label:'🎵 Pop',         genreId:132},
+  {label:'🎤 Rap',         genreId:116},
+  {label:'💜 R&B',         genreId:165},
+  {label:'🎸 Rock',        genreId:152},
+  {label:'⚡ Électro',      genreId:106},
+  {label:'🌊 Chill',       q:'chill lofi ambient relax'},
+  {label:'🎹 Classique',   genreId:98},
+  {label:'🌍 Afrobeats',   genreId:466},
+  {label:'🎷 Jazz',        genreId:129}
 ];
 
 const HOME_SECTIONS=[
-  {title:'🔥 Top France',           type:'chart',   chartId:1109890291},
-  {title:'🌍 Top Global',           type:'chart',   chartId:3155776842},
-  {title:'🇺🇸 Top USA',             type:'chart',   chartId:1313621735},
-  {title:'🆕 Nouveautés',           type:'search',  q:'new music 2025 2026'},
-  {title:'🎤 Hip-Hop & Rap',        type:'search',  q:'rap hip hop'},
-  {title:'💜 R&B & Soul',           type:'search',  q:'rnb soul'},
-  {title:'⚡ Électro & Dance',       type:'search',  q:'electronic dance edm'},
-  {title:'🌊 Chill & Lofi',         type:'search',  q:'chill lofi relax'},
-  {title:'🌍 Afrobeats',            type:'search',  q:'afrobeats afro'},
-  {title:'🎸 Rock',                 type:'search',  q:'rock alternative'},
-  {title:'🎷 Jazz & Blues',         type:'search',  q:'jazz blues'},
-  {title:'🎹 Classique',            type:'search',  q:'classical piano'}
+  {title:'🔥 Top charts',           type:'globalChart'},
+  {title:'🎵 Hits Pop',             type:'genreChart', genreId:132},
+  {title:'🎤 Rap & Hip-Hop',        type:'genreChart', genreId:116},
+  {title:'💜 R&B & Soul',           type:'genreChart', genreId:165},
+  {title:'⚡ Électro & Dance',       type:'genreChart', genreId:106},
+  {title:'🎸 Rock',                 type:'genreChart', genreId:152},
+  {title:'🌍 Afrobeats',            type:'genreChart', genreId:466},
+  {title:'🌊 Chill & Lofi',         type:'search',  q:'chill lofi ambient beats'},
+  {title:'🎷 Jazz',                 type:'genreChart', genreId:129},
+  {title:'🎹 Classique',            type:'genreChart', genreId:98}
 ];
 
 // ── AUTH ──
@@ -443,7 +441,7 @@ function renderGenrePills(){
     const b=document.createElement('button');
     b.className='genre-pill'+(i===activeGenre?' active':'');
     b.textContent=g.label;
-    b.onclick=()=>{activeGenre=i;resetOffset();renderGenrePills();if(g.isHome){loadHomeSections();}else{loadGenreSection(i);}};
+    b.onclick=()=>{activeGenre=i;resetOffset();renderGenrePills();if(g.isHome){loadHomeSections();}else{loadGenreSection(i);setupInfiniteScroll();}};
     c.appendChild(b);
   });
 }
@@ -600,6 +598,18 @@ async function deezerRelated(artistId,limit=10){
   return items;
 }
 
+// Deezer genre charts (top tracks per genre - curated by Deezer)
+async function deezerGenreChart(genreId,limit=40){
+  const cacheKey='dz_genre_'+genreId+'_'+limit;
+  const cached=getCached(cacheKey);
+  if(cached) return cached;
+  const data=await jsonp('https://api.deezer.com/chart/'+genreId+'/tracks?limit='+limit);
+  if(!data.data) throw new Error('Erreur genre chart');
+  const items=parseDeezerTracks(data.data);
+  setCache(cacheKey,items);
+  return items;
+}
+
 // Deduplicate: max 2 songs per artist
 function dedup(tracks,maxPerArtist=2){
   const count={};
@@ -654,23 +664,27 @@ async function findYouTubeId(track){
 async function fetchSection(section,containerId){
   try{
     let items;
-    if(section.type==='chart'){
-      items=await deezerPlaylist(section.chartId,40);
+    if(section.type==='globalChart'){
+      items=await deezerChart(40);
+    }else if(section.type==='genreChart'){
+      items=await deezerGenreChart(section.genreId,40);
+    }else if(section.type==='playlist'){
+      items=await deezerPlaylist(section.playlistId,40);
     }else{
       items=await deezerSearch(section.q,30);
     }
     items=dedup(items,2);
-    items=shuffle(items).slice(0,15);
+    items=items.slice(0,15);
     const c=$(containerId);if(!c)return;
     c.innerHTML='';
     items.forEach((v,i)=>{
       const card=document.createElement('div');
       card.className='h-card';
-      card.innerHTML=`<div class="thumb-wrap"><img class="thumb-img" src="${v.thumb}" alt="" loading="lazy"/><div class="play-overlay"><svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg></div></div><div class="card-info"><div class="card-title">${v.title}</div><div class="card-ch" style="font-size:10.5px;">${v.channel}</div></div>`;
+      card.innerHTML='<div class="thumb-wrap"><img class="thumb-img" src="'+v.thumb+'" alt="" loading="lazy"/><div class="play-overlay"><svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg></div></div><div class="card-info"><div class="card-title">'+v.title+'</div><div class="card-ch" style="font-size:10.5px;">'+v.channel+'</div></div>';
       card.onclick=()=>{currentList=items;playTrack(i);};
       c.appendChild(card);
     });
-  }catch(e){const c=$(containerId);if(c)c.innerHTML=`<div style="padding:10px;font-size:12px;color:var(--muted);">Erreur chargement</div>`;}
+  }catch(e){const c=$(containerId);if(c)c.innerHTML='<div style="padding:10px;font-size:12px;color:var(--muted);">Erreur chargement</div>';}
 }
 
 async function loadGenreSection(idx){
@@ -679,13 +693,14 @@ async function loadGenreSection(idx){
   c.innerHTML='<div class="loading-row"><div class="spinner"></div>Chargement '+genre.label+'...</div>';
   try{
     let raw;
-    if(genre.playlistId){
-      // Use Deezer editorial playlist for better quality
-      try{raw=await deezerPlaylist(genre.playlistId,50);}catch(e){raw=await deezerSearch(genre.q,40);}
-    }else{
+    if(genre.genreId){
+      raw=await deezerGenreChart(genre.genreId,50);
+    }else if(genre.q){
       raw=await deezerSearch(genre.q,40);
+    }else{
+      raw=await deezerChart(50);
     }
-    results=dedup(shuffle(raw),2);
+    results=dedup(raw,2);
     currentList=results;
     c.innerHTML='<div class="section-header"><div class="section-title">'+genre.label+' <span style="font-size:12px;color:var(--muted);font-weight:400;">('+results.length+')</span></div></div><div class="cards-grid" id="grid"></div>';
     renderGrid(results);
@@ -705,12 +720,18 @@ async function loadMoreResults(){
   if(homeLoading)return;
   homeLoading=true;
   deezerOffset+=24;
-  const genre=GENRES[activeGenre];const q=genre.q;
+  const genre=GENRES[activeGenre];
   try{
-    const data=await jsonp('https://api.deezer.com/search?q='+encodeURIComponent(q)+'&limit=24&index='+deezerOffset);
+    let data;
+    if(genre.genreId){
+      data=await jsonp('https://api.deezer.com/chart/'+genre.genreId+'/tracks?limit=24&index='+deezerOffset);
+    }else if(genre.q){
+      data=await jsonp('https://api.deezer.com/search?q='+encodeURIComponent(genre.q)+'&limit=24&index='+deezerOffset);
+    }else{
+      data=await jsonp('https://api.deezer.com/chart/0/tracks?limit=24&index='+deezerOffset);
+    }
     if(!data.data)throw new Error();
     let newItems=parseDeezerTracks(data.data);
-    // Dedup against existing results
     const existingIds=new Set(homeResults.map(r=>r.deezerId));
     newItems=newItems.filter(t=>!existingIds.has(t.deezerId));
     newItems=dedup(newItems,2);
