@@ -673,29 +673,39 @@ function shuffle(arr){
 }
 
 // Find YouTube video ID for a Deezer track (uses YouTube search but only 1 request per song)
+// Audio element for Deezer preview fallback
+let previewAudio=null;
+let usingPreview=false;
+
 async function findYouTubeId(track){
   if(track.id) return track.id;
-  const cacheKey='yt_id_'+track.deezerId;
+  const cacheKey='yt_id_'+(track.deezerId||track.title);
   const cached=getCached(cacheKey);
   if(cached){track.id=cached;return cached;}
-  // Use Invidious API (no quota) to find the YouTube video
-  const invInstances=['https://vid.puffyan.us','https://invidious.snopyta.org','https://inv.nadeko.net','https://invidious.nerdvpn.de'];
-  for(const inst of invInstances){
+  const q=(track.channel+' '+track.title).replace(/[\(\)\[\]\-]/g,' ').replace(/\s+/g,' ').trim();
+  // 1. Try Piped API (supports CORS, no quota, most reliable)
+  const pipedInstances=['https://pipedapi.kavin.rocks','https://pipedapi.r4fo.com','https://pipedapi.adminforge.de','https://api.piped.privacydev.net'];
+  for(const inst of pipedInstances){
     try{
-      const url=inst+'/api/v1/search?q='+encodeURIComponent(track.ytQuery)+'&type=video&fields=videoId&limit=1';
-      const res=await fetch(url);
+      const res=await fetch(inst+'/search?q='+encodeURIComponent(q)+'&filter=music_songs',{signal:AbortSignal.timeout(5000)});
       const data=await res.json();
-      if(data&&data[0]&&data[0].videoId){
-        track.id=data[0].videoId;
-        setCache(cacheKey,track.id);
-        return track.id;
+      if(data.items&&data.items.length>0){
+        const vid=data.items.find(i=>i.url&&i.url.includes('/watch?v='));
+        if(vid){
+          const videoId=vid.url.split('v=')[1];
+          if(videoId){
+            track.id=videoId;
+            setCache(cacheKey,videoId);
+            return videoId;
+          }
+        }
       }
     }catch(e){continue;}
   }
-  // Fallback: use YouTube API (costs 100 units but rare)
+  // 2. Fallback: YouTube API (uses quota but cached after first time)
   try{
-    const url='https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=1&q='+encodeURIComponent(track.ytQuery)+'&key='+YT_KEY;
-    const res=await fetch(url);
+    const url='https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=1&q='+encodeURIComponent(q)+'&key='+YT_KEY;
+    const res=await fetch(url,{signal:AbortSignal.timeout(5000)});
     const data=await res.json();
     if(data.items&&data.items[0]){
       track.id=data.items[0].id.videoId;
@@ -703,7 +713,9 @@ async function findYouTubeId(track){
       return track.id;
     }
   }catch(e){}
-  throw new Error('Impossible de trouver cette chanson');
+  // 3. Final fallback: Deezer 30s preview
+  if(track.preview) return '__preview__';
+  throw new Error('Chanson introuvable');
 }
 
 async function fetchSection(section,containerId){
@@ -951,18 +963,54 @@ async function playTrack(idx){
   currentIdx=idx;const v=currentList[idx];
   $('nowTitle').textContent=v.title;$('nowCh').textContent=v.channel;
   $('nowThumbImg').src=v.thumb;$('nowThumbImg').style.display='block';$('nowPlaceholder').style.display='none';
-  // Find YouTube ID if not already resolved
+  // Stop any preview audio
+  stopPreview();
+  // Show loading state
+  $('nowTitle').textContent='⏳ '+v.title;
   try{
     const ytId=await findYouTubeId(v);
-    if(ytReady){player.loadVideoById(ytId);}else{pendingId=ytId;}
+    $('nowTitle').textContent=v.title;
+    if(ytId==='__preview__'){
+      // Play Deezer 30s preview
+      playPreview(v);
+    }else{
+      usingPreview=false;
+      if(ytReady){player.loadVideoById(ytId);}else{pendingId=ytId;}
+    }
     isPlaying=true;updatePlayBtn();addToHistory(v);
   }catch(e){
-    $('nowTitle').textContent='Erreur - chanson introuvable';
-    console.error(e);
+    $('nowTitle').textContent=v.title+' (introuvable)';
+    // Auto-skip to next after 2s
+    setTimeout(()=>{if(currentIdx===idx)nextTrack();},2000);
   }
   const grid=$('grid');if(grid)renderGrid(currentList);
 }
-function togglePlay(){if(currentIdx<0||!ytReady)return;isPlaying?player.pauseVideo():player.playVideo();}
+
+function playPreview(track){
+  usingPreview=true;
+  if(!previewAudio) previewAudio=new Audio();
+  previewAudio.src=track.preview;
+  previewAudio.volume=(player&&ytReady)?player.getVolume()/100:0.7;
+  previewAudio.play();
+  previewAudio.onended=()=>nextTrack();
+  // Pause YouTube if playing
+  if(ytReady&&player.getPlayerState&&player.getPlayerState()===1) player.pauseVideo();
+  $('nowTitle').textContent=track.title+' (aperçu 30s)';
+}
+
+function stopPreview(){
+  if(previewAudio){previewAudio.pause();previewAudio.src='';}
+  usingPreview=false;
+}
+function togglePlay(){
+  if(currentIdx<0)return;
+  if(usingPreview&&previewAudio){
+    if(isPlaying){previewAudio.pause();isPlaying=false;}else{previewAudio.play();isPlaying=true;}
+    updatePlayBtn();return;
+  }
+  if(!ytReady)return;
+  isPlaying?player.pauseVideo():player.playVideo();
+}
 function nextTrack(){if(!currentList.length)return;playTrack(isShuffle?Math.floor(Math.random()*currentList.length):(currentIdx+1)%currentList.length);}
 function prevTrack(){if(!currentList.length)return;playTrack((currentIdx-1+currentList.length)%currentList.length);}
 function toggleShuffle(){isShuffle=!isShuffle;$('shuffleBtn').style.color=isShuffle?'var(--purple)':'';}
@@ -975,7 +1023,7 @@ window.onYouTubeIframeAPIReady=()=>{
   player=new YT.Player('yt-player',{height:'1',width:'1',playerVars:{autoplay:1,playsinline:1},events:{
     onReady:()=>{ytReady=true;player.setVolume(70);if(pendingId){player.loadVideoById(pendingId);pendingId=null;}},
     onStateChange:e=>{
-      if(e.data===YT.PlayerState.PLAYING){isPlaying=true;updatePlayBtn();startRAF();}
+      if(e.data===YT.PlayerState.PLAYING){isPlaying=true;usingPreview=false;updatePlayBtn();startRAF();}
       if(e.data===YT.PlayerState.PAUSED){isPlaying=false;updatePlayBtn();}
       if(e.data===YT.PlayerState.ENDED){isRepeat?player.seekTo(0):nextTrack();}
     }
@@ -983,7 +1031,14 @@ window.onYouTubeIframeAPIReady=()=>{
 };
 
 // ── SMOOTH PROGRESS ──
-function startRAF(){cancelAnimationFrame(rafId);function tick(){if(!ytReady||!player.getCurrentTime)return;try{const cur=player.getCurrentTime()||0,dur=player.getDuration()||1;if(!isDraggingProg){$('progFill').style.width=(cur/dur*100)+'%';$('curTime').textContent=fmt(cur);$('totTime').textContent=fmt(dur);}}catch(_){}rafId=requestAnimationFrame(tick);}rafId=requestAnimationFrame(tick);}
+function startRAF(){cancelAnimationFrame(rafId);function tick(){
+  if(usingPreview&&previewAudio){
+    const cur=previewAudio.currentTime||0,dur=previewAudio.duration||30;
+    if(!isDraggingProg){$('progFill').style.width=(cur/dur*100)+'%';$('curTime').textContent=fmt(cur);$('totTime').textContent=fmt(dur);}
+  }else if(ytReady&&player.getCurrentTime){
+    try{const cur=player.getCurrentTime()||0,dur=player.getDuration()||1;if(!isDraggingProg){$('progFill').style.width=(cur/dur*100)+'%';$('curTime').textContent=fmt(cur);$('totTime').textContent=fmt(dur);}}catch(_){}
+  }
+  rafId=requestAnimationFrame(tick);}rafId=requestAnimationFrame(tick);}
 function fmt(s){s=Math.floor(s||0);return Math.floor(s/60)+':'+(s%60<10?'0':'')+s%60;}
 function getPct(e,el){const r=el.getBoundingClientRect(),cx=e.touches?e.touches[0].clientX:e.clientX;return Math.max(0,Math.min(1,(cx-r.left)/r.width));}
 $('progTrack').addEventListener('mousedown',e=>{isDraggingProg=true;scrubProg(e);});
