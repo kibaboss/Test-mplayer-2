@@ -88,10 +88,10 @@
     .section-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;}
     .section-title{font-size:15px;font-weight:700;color:#fff;}
     /* Genre pills */
-    .genre-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+    .genre-pills{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:18px;scrollbar-width:none;} .genre-pills::-webkit-scrollbar{display:none;}
     .genre-pill{padding:7px 15px;border-radius:20px;font-size:12.5px;font-weight:500;cursor:pointer;border:0.5px solid var(--border);color:var(--muted);transition:all .15s;background:transparent;font-family:inherit;} .genre-pill:hover,.genre-pill.active{background:var(--purple);border-color:var(--purple);color:#fff;}
     /* Horizontal scroll row */
-    .h-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:10px;scrollbar-width:thin;scrollbar-color:var(--purple) var(--dim);scroll-behavior:smooth;} .h-scroll::-webkit-scrollbar{height:6px;} .h-scroll::-webkit-scrollbar-track{background:var(--dim);border-radius:3px;} .h-scroll::-webkit-scrollbar-thumb{background:var(--purple);border-radius:3px;} .h-scroll::-webkit-scrollbar-thumb:hover{background:var(--purple-dark);}
+    .h-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;scroll-behavior:smooth;} .h-scroll::-webkit-scrollbar{display:none;}
     .h-card{min-width:140px;max-width:140px;background:rgba(255,255,255,.04);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;transition:transform .12s,background .12s;flex-shrink:0;} .h-card:hover{transform:translateY(-2px);background:rgba(255,255,255,.07);}
     .h-card.playing{border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.09);}
     /* Main grid */
@@ -363,10 +363,20 @@ const GENRES=[
   {label:'💜 R&B',         genreId:165},
   {label:'🎸 Rock',        genreId:152},
   {label:'⚡ Électro',      genreId:106},
-  {label:'🌊 Chill',       q:'chill lofi beats relax study ambient'},
-  {label:'🎹 Classique',   genreId:98},
   {label:'🌍 Afrobeats',   genreId:466},
-  {label:'🎷 Jazz',        genreId:129}
+  {label:'🎷 Jazz',        genreId:129},
+  {label:'🎹 Classique',   genreId:98},
+  {label:'🇯🇲 Reggae',     genreId:144},
+  {label:'🎸 Metal',       genreId:464},
+  {label:'🎶 Soul & Funk', genreId:169},
+  {label:'🎻 Folk',        genreId:466},
+  {label:'🌎 Latino',      genreId:197},
+  {label:'🎵 Variété FR',  genreId:52},
+  {label:'🌊 Chill',       q:'chill lofi beats relax study ambient meditation'},
+  {label:'🎧 DJ Mix',      q:'dj mix set house techno'},
+  {label:'💪 Workout',     q:'workout motivation gym training energy'},
+  {label:'🎉 Fête',        q:'party dance club hits'},
+  {label:'💔 Mélancolie',  q:'sad songs emotional melancholy'},
 ];
 
 const HOME_SECTIONS=[
@@ -377,9 +387,17 @@ const HOME_SECTIONS=[
   {title:'⚡ Électro & Dance',       type:'genreChart', genreId:106},
   {title:'🎸 Rock',                 type:'genreChart', genreId:152},
   {title:'🌍 Afrobeats',            type:'genreChart', genreId:466},
-  {title:'🌊 Chill & Lofi',         type:'search',  q:'chill lofi beats relax study ambient'},
   {title:'🎷 Jazz',                 type:'genreChart', genreId:129},
-  {title:'🎹 Classique',            type:'genreChart', genreId:98}
+  {title:'🇯🇲 Reggae',              type:'genreChart', genreId:144},
+  {title:'🎶 Soul & Funk',          type:'genreChart', genreId:169},
+  {title:'🌎 Latino',               type:'genreChart', genreId:197},
+  {title:'🎵 Variété française',    type:'genreChart', genreId:52},
+  {title:'🌊 Chill & Lofi',         type:'search',  q:'chill lofi beats relax study ambient meditation'},
+  {title:'💪 Workout',              type:'search',  q:'workout motivation gym training energy power'},
+  {title:'🎉 Ambiance fête',        type:'search',  q:'party dance club hits summer'},
+  {title:'🎹 Classique',            type:'genreChart', genreId:98},
+  {title:'🎸 Metal',                type:'genreChart', genreId:464},
+  {title:'💔 Mélancolie',           type:'search',  q:'sad songs emotional melancholy heartbreak'},
 ];
 
 // ── AUTH ──
