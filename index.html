@@ -16,7 +16,7 @@
     .theme-section{margin-top:auto;padding-top:12px;border-top:0.5px solid var(--border);}
     .theme-btn{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;font-size:12.5px;color:var(--muted);cursor:pointer;transition:all .12s;width:100%;border:none;background:none;font-family:inherit;text-align:left;} .theme-btn:hover{background:rgba(255,255,255,.05);color:var(--text);}
     .theme-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:180;backdrop-filter:blur(4px);}
-    .theme-modal{background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:520px;max-height:80vh;overflow-y:auto;}
+    .theme-modal{background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:520px;max-height:80vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--purple) transparent;} .theme-modal::-webkit-scrollbar{width:5px;} .theme-modal::-webkit-scrollbar-track{background:transparent;} .theme-modal::-webkit-scrollbar-thumb{background:var(--purple);border-radius:3px;}
     .theme-modal-title{font-size:17px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;}
     .theme-modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:4px;} .theme-modal-close:hover{color:var(--text);}
     .theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px;margin-bottom:18px;}
@@ -64,7 +64,7 @@
     /* APP */
     #app{display:none;grid-template-columns:230px 1fr;grid-template-rows:1fr 90px;height:100vh;}
     /* SIDEBAR */
-    .sidebar{background:var(--bg2);padding:18px 13px;border-right:0.5px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;grid-row:1/2;}
+    .sidebar{background:var(--bg2);padding:18px 13px;border-right:0.5px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;grid-row:1/2;scrollbar-width:thin;scrollbar-color:var(--dim) transparent;} .sidebar::-webkit-scrollbar{width:4px;} .sidebar::-webkit-scrollbar-track{background:transparent;} .sidebar::-webkit-scrollbar-thumb{background:var(--dim);border-radius:2px;} .sidebar::-webkit-scrollbar-thumb:hover{background:var(--purple);}
     .logo{font-size:20px;font-weight:800;padding:0 8px;margin-bottom:20px;letter-spacing:-.5px;} .logo span{color:var(--purple);}
     .user-chip{display:flex;align-items:center;gap:9px;background:rgba(255,255,255,.05);border-radius:10px;padding:8px 10px;margin-bottom:14px;}
     .user-avatar{width:30px;height:30px;border-radius:50%;background:var(--purple-dark);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;overflow:hidden;} .user-avatar img{width:100%;height:100%;object-fit:cover;}
@@ -80,7 +80,7 @@
     .h-thumb{width:32px;height:32px;border-radius:5px;object-fit:cover;flex-shrink:0;background:#222;}
     .h-info{flex:1;min-width:0;} .h-title{font-size:11.5px;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} .h-ch{font-size:10.5px;color:var(--muted);}
     /* MAIN */
-    .main{background:linear-gradient(180deg,var(--accent-glow) 0%,var(--bg) 35%);padding:20px 24px;overflow-y:auto;grid-row:1/2;}
+    .main{background:linear-gradient(180deg,var(--accent-glow) 0%,var(--bg) 35%);padding:20px 24px;overflow-y:auto;grid-row:1/2;scrollbar-width:thin;scrollbar-color:var(--purple) transparent;} .main::-webkit-scrollbar{width:6px;} .main::-webkit-scrollbar-track{background:transparent;} .main::-webkit-scrollbar-thumb{background:var(--purple);border-radius:3px;} .main::-webkit-scrollbar-thumb:hover{background:var(--purple-dark);}
     .search-row{display:flex;gap:10px;margin-bottom:20px;}
     .search-input{flex:1;background:rgba(255,255,255,.07);border:0.5px solid rgba(255,255,255,.13);border-radius:25px;padding:11px 18px;color:#fff;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s;} .search-input::placeholder{color:var(--muted);} .search-input:focus{border-color:rgba(167,139,250,.6);}
     .search-btn{background:var(--purple);border:none;border-radius:25px;padding:11px 22px;color:#fff;font-size:14px;font-family:inherit;font-weight:600;cursor:pointer;transition:opacity .12s;} .search-btn:hover{opacity:.85;} .search-btn:disabled{opacity:.4;cursor:default;}
@@ -91,7 +91,7 @@
     .genre-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
     .genre-pill{padding:7px 15px;border-radius:20px;font-size:12.5px;font-weight:500;cursor:pointer;border:0.5px solid var(--border);color:var(--muted);transition:all .15s;background:transparent;font-family:inherit;} .genre-pill:hover,.genre-pill.active{background:var(--purple);border-color:var(--purple);color:#fff;}
     /* Horizontal scroll row */
-    .h-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;} .h-scroll::-webkit-scrollbar{display:none;}
+    .h-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:10px;scrollbar-width:thin;scrollbar-color:var(--purple) var(--dim);scroll-behavior:smooth;} .h-scroll::-webkit-scrollbar{height:6px;} .h-scroll::-webkit-scrollbar-track{background:var(--dim);border-radius:3px;} .h-scroll::-webkit-scrollbar-thumb{background:var(--purple);border-radius:3px;} .h-scroll::-webkit-scrollbar-thumb:hover{background:var(--purple-dark);}
     .h-card{min-width:140px;max-width:140px;background:rgba(255,255,255,.04);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;transition:transform .12s,background .12s;flex-shrink:0;} .h-card:hover{transform:translateY(-2px);background:rgba(255,255,255,.07);}
     .h-card.playing{border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.09);}
     /* Main grid */
@@ -363,7 +363,7 @@ const GENRES=[
   {label:'💜 R&B',         genreId:165},
   {label:'🎸 Rock',        genreId:152},
   {label:'⚡ Électro',      genreId:106},
-  {label:'🌊 Chill',       q:'chill lofi ambient relax'},
+  {label:'🌊 Chill',       q:'chill lofi beats relax study ambient'},
   {label:'🎹 Classique',   genreId:98},
   {label:'🌍 Afrobeats',   genreId:466},
   {label:'🎷 Jazz',        genreId:129}
@@ -377,7 +377,7 @@ const HOME_SECTIONS=[
   {title:'⚡ Électro & Dance',       type:'genreChart', genreId:106},
   {title:'🎸 Rock',                 type:'genreChart', genreId:152},
   {title:'🌍 Afrobeats',            type:'genreChart', genreId:466},
-  {title:'🌊 Chill & Lofi',         type:'search',  q:'chill lofi ambient beats'},
+  {title:'🌊 Chill & Lofi',         type:'search',  q:'chill lofi beats relax study ambient'},
   {title:'🎷 Jazz',                 type:'genreChart', genreId:129},
   {title:'🎹 Classique',            type:'genreChart', genreId:98}
 ];
@@ -511,7 +511,7 @@ async function loadPersonalized(){
     c.innerHTML='';
     c._items=persoItems;
     persoItems.forEach((v,i)=>{
-      const isFav=favorites.some(f=>(f.deezerId||f.id)===(v.deezerId||v.id));
+      const isFav=v.deezerId?favorites.some(f=>String(f.deezerId)===String(v.deezerId)):v.id?favorites.some(f=>String(f.id)===String(v.id)):false;
       const card=document.createElement('div');
       card.className='h-card';
       card.innerHTML='<div class="thumb-wrap"><img class="thumb-img" src="'+v.thumb+'" alt="" loading="lazy"/><div class="play-overlay"><svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg></div></div><div class="card-info"><div class="card-title">'+v.title+'</div><div class="card-ch"><span class="artist-link" onclick="event.stopPropagation();showArtistPage(this.textContent)">'+v.channel+'</span><div class="h-card-actions"><span class="fav-btn'+(isFav?' liked':'')+'" data-i="'+i+'" onclick="event.stopPropagation();toggleFavH(this,'+i+')">'+(isFav?'\u2661':'\u2665')+'</span><span class="add-pl-btn" onclick="event.stopPropagation();openAddToPlH('+i+')">\uff0b</span></div></div></div>';
@@ -710,7 +710,7 @@ async function fetchSection(section,containerId){
     // Build cards
     c.innerHTML='';
     items.forEach((v,i)=>{
-      const isFav=favorites.some(f=>f.deezerId===v.deezerId||f.id===v.id);
+      const isFav=v.deezerId?favorites.some(f=>String(f.deezerId)===String(v.deezerId)):v.id?favorites.some(f=>String(f.id)===String(v.id)):false;
       const card=document.createElement('div');
       card.className='h-card';
       card.innerHTML='<div class="thumb-wrap"><img class="thumb-img" src="'+v.thumb+'" alt="" loading="lazy"/><div class="play-overlay"><svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg></div></div><div class="card-info"><div class="card-title">'+v.title+'</div><div class="card-ch"><span class="artist-link" data-artist="'+encodeURIComponent(v.channel)+'" onclick="event.stopPropagation();showArtistPage(decodeURIComponent(this.dataset.artist))">'+v.channel+'</span><div class="h-card-actions"><span class="fav-btn'+(isFav?' liked':'')+'" data-id="'+(v.deezerId||v.id)+'" data-i="'+i+'" onclick="event.stopPropagation();toggleFavH(this,'+i+')">'+(isFav?'♥':'♡')+'</span><span class="add-pl-btn" onclick="event.stopPropagation();openAddToPlH('+i+')">＋</span></div></div></div>';
@@ -908,7 +908,7 @@ function parseItems(items){
 }
 
 function makeCard(v,i,list){
-  const isFav=favorites.some(f=>(f.deezerId||f.id)===(v.deezerId||v.id));
+  const isFav=v.deezerId?favorites.some(f=>String(f.deezerId)===String(v.deezerId)):v.id?favorites.some(f=>String(f.id)===String(v.id)):false;
   const isNow=currentList[currentIdx]?.id===v.id||currentList[currentIdx]?.deezerId===v.deezerId;
   const card=document.createElement('div');
   card.className='card'+(isNow?' playing':'');
