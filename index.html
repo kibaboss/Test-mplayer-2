@@ -150,6 +150,25 @@
     .vol-track{flex:1;height:4px;background:var(--dim);border-radius:2px;cursor:pointer;position:relative;transition:height .1s;} .vol-track:hover{height:6px;}
     .vol-fill{height:100%;background:rgba(255,255,255,.5);border-radius:2px;pointer-events:none;}
     .vol-thumb{position:absolute;top:50%;right:-6px;transform:translateY(-50%);width:12px;height:12px;background:#fff;border-radius:50%;opacity:0;transition:opacity .15s;pointer-events:none;} .vol-track:hover .vol-thumb{opacity:1;}
+    
+    /* Scroll arrows */
+    .scroll-wrap{position:relative;}
+    .scroll-arrow{position:absolute;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:50%;background:var(--bg2);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5;opacity:0;transition:opacity .2s;box-shadow:0 2px 8px rgba(0,0,0,.3);} .scroll-wrap:hover .scroll-arrow{opacity:1;} .scroll-arrow:hover{background:var(--purple);border-color:var(--purple);}
+    .scroll-arrow.left{left:-8px;} .scroll-arrow.right{right:-8px;}
+    .scroll-arrow svg{width:14px;height:14px;fill:var(--text);}
+    /* h-card actions */
+    .h-card-actions{display:flex;gap:5px;align-items:center;flex-shrink:0;}
+    .h-card-actions span{cursor:pointer;font-size:12px;user-select:none;transition:transform .1s;color:var(--muted);} .h-card-actions span:hover{transform:scale(1.3);color:var(--text);}
+    .h-card .card-ch{display:flex;align-items:center;justify-content:space-between;gap:3px;}
+    .h-card .card-ch .artist-link{cursor:pointer;transition:color .12s;} .h-card .card-ch .artist-link:hover{color:var(--purple);text-decoration:underline;}
+    .card-ch .artist-link{cursor:pointer;transition:color .12s;} .card-ch .artist-link:hover{color:var(--purple);text-decoration:underline;}
+    /* Artist page */
+    .artist-header{display:flex;gap:20px;align-items:center;margin-bottom:24px;padding-bottom:18px;border-bottom:0.5px solid var(--border);}
+    .artist-pic{width:100px;height:100px;border-radius:50%;object-fit:cover;flex-shrink:0;background:var(--bg3);}
+    .artist-meta{flex:1;min-width:0;}
+    .artist-name{font-size:24px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px;}
+    .artist-fans{font-size:13px;color:var(--muted);}
+    .artist-play-btn{background:var(--purple);border:none;border-radius:22px;padding:9px 20px;color:#fff;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:6px;margin-top:10px;}
     @media(max-width:640px){#app{grid-template-columns:1fr;grid-template-rows:1fr 80px;}.sidebar{display:none;}.main{padding:14px;}.cards-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;}.now-playing{width:140px;}}
   </style>
 </head>
@@ -676,16 +695,129 @@ async function fetchSection(section,containerId){
     items=dedup(items,2);
     items=items.slice(0,15);
     const c=$(containerId);if(!c)return;
+    // Wrap in scroll-wrap with arrows
+    const wrap=c.parentElement;
+    // Remove old scroll-wrap if exists
+    if(wrap.querySelector('.scroll-arrow')) wrap.querySelectorAll('.scroll-arrow').forEach(a=>a.remove());
+    // Build cards
     c.innerHTML='';
     items.forEach((v,i)=>{
+      const isFav=favorites.some(f=>f.deezerId===v.deezerId||f.id===v.id);
       const card=document.createElement('div');
       card.className='h-card';
-      card.innerHTML='<div class="thumb-wrap"><img class="thumb-img" src="'+v.thumb+'" alt="" loading="lazy"/><div class="play-overlay"><svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg></div></div><div class="card-info"><div class="card-title">'+v.title+'</div><div class="card-ch" style="font-size:10.5px;">'+v.channel+'</div></div>';
-      card.onclick=()=>{currentList=items;playTrack(i);};
+      card.innerHTML='<div class="thumb-wrap"><img class="thumb-img" src="'+v.thumb+'" alt="" loading="lazy"/><div class="play-overlay"><svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg></div></div><div class="card-info"><div class="card-title">'+v.title+'</div><div class="card-ch"><span class="artist-link" data-artist="'+encodeURIComponent(v.channel)+'" onclick="event.stopPropagation();showArtistPage(decodeURIComponent(this.dataset.artist))">'+v.channel+'</span><div class="h-card-actions"><span class="fav-btn'+(isFav?' liked':'')+'" data-id="'+(v.deezerId||v.id)+'" data-i="'+i+'" onclick="event.stopPropagation();toggleFavH(this,'+i+')">'+(isFav?'♥':'♡')+'</span><span class="add-pl-btn" onclick="event.stopPropagation();openAddToPlH('+i+')">＋</span></div></div></div>';
+      card.addEventListener('click',e=>{if(e.target.classList.contains('fav-btn')||e.target.classList.contains('add-pl-btn')||e.target.classList.contains('artist-link'))return;currentList=items;playTrack(i);});
       c.appendChild(card);
     });
+    // Store items on container for fav/playlist actions
+    c._items=items;
+    // Add scroll arrows
+    if(!wrap.classList.contains('scroll-wrap')){wrap.classList.add('scroll-wrap');}
+    const leftArr=document.createElement('div');
+    leftArr.className='scroll-arrow left';
+    leftArr.innerHTML='<svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>';
+    leftArr.onclick=()=>c.scrollBy({left:-300,behavior:'smooth'});
+    const rightArr=document.createElement('div');
+    rightArr.className='scroll-arrow right';
+    rightArr.innerHTML='<svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>';
+    rightArr.onclick=()=>c.scrollBy({left:300,behavior:'smooth'});
+    wrap.appendChild(leftArr);
+    wrap.appendChild(rightArr);
   }catch(e){const c=$(containerId);if(c)c.innerHTML='<div style="padding:10px;font-size:12px;color:var(--muted);">Erreur chargement</div>';}
 }
+
+// Fav toggle for h-cards
+function toggleFavH(el,idx){
+  const scroll=el.closest('.h-scroll');
+  const items=scroll?scroll._items:currentList;
+  if(!items||!items[idx])return;
+  if(isGuest){alert('Crée un compte pour sauvegarder tes favoris !');return;}
+  const v=items[idx];
+  const id=String(v.deezerId||v.id);
+  const fi=favorites.findIndex(f=>String(f.deezerId||f.id)===id);
+  const ref=db.collection('users').doc(currentUser.uid).collection('favorites').doc(id);
+  if(fi>=0){favorites.splice(fi,1);ref.delete();el.textContent='♡';el.classList.remove('liked');}
+  else{v.addedAt=firebase.firestore.FieldValue.serverTimestamp();favorites.push(v);ref.set(v);el.textContent='♥';el.classList.add('liked');}
+}
+
+// Add to playlist for h-cards
+function openAddToPlH(idx){
+  const scroll=event.target.closest('.h-scroll');
+  const items=scroll?scroll._items:currentList;
+  if(!items||!items[idx])return;
+  trackToAdd=items[idx];
+  if(isGuest){alert('Crée un compte !');return;}
+  const list=$('addToPlList');list.innerHTML='';
+  if(!playlists.length){list.innerHTML='<div style="padding:12px;font-size:13px;color:var(--muted);">Aucune playlist — crée-en une !</div>';}
+  else{playlists.forEach(pl=>{
+    const already=(pl.tracks||[]).some(t=>(t.deezerId||t.id)===(trackToAdd.deezerId||trackToAdd.id));
+    const item=document.createElement('div');
+    item.style.cssText='padding:10px 12px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:13px;transition:background .1s;';
+    item.onmouseover=()=>item.style.background='rgba(255,255,255,.07)';item.onmouseout=()=>item.style.background='';
+    item.innerHTML=(pl.cover?'<img src="'+pl.cover+'" style="width:30px;height:30px;border-radius:4px;object-fit:cover;flex-shrink:0;"/>':'<div style="width:30px;height:30px;border-radius:4px;background:var(--purple-dark);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="rgba(255,255,255,.6)"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>')+'<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+pl.name+'</span>'+(already?'<span style="color:var(--purple);font-size:11px;">✓</span>':'');
+    item.onclick=()=>{if(!already)addTrackToPl(pl.id);$('addToPlModal').style.display='none';};
+    list.appendChild(item);
+  });}
+  $('addToPlModal').style.display='flex';
+}
+
+// Artist page
+async function showArtistPage(artistName){
+  setNav('');
+  $('mainContent').innerHTML='<div class="loading-row"><div class="spinner"></div>Chargement de '+artistName+'...</div>';
+  try{
+    // Search artist on Deezer
+    const searchData=await jsonp('https://api.deezer.com/search/artist?q='+encodeURIComponent(artistName)+'&limit=1');
+    if(!searchData.data||!searchData.data[0]) throw new Error('Artiste introuvable');
+    const artist=searchData.data[0];
+    // Get top tracks
+    const topTracks=await deezerArtistTop(artist.id,20);
+    // Get related artists
+    let related=[];
+    try{related=await deezerRelated(artist.id,8);}catch(e){}
+    const fansStr=artist.nb_fan?new Intl.NumberFormat('fr').format(artist.nb_fan)+' fans':'';
+    $('mainContent').innerHTML='';
+    // Header
+    const header=document.createElement('div');
+    header.className='artist-header';
+    header.innerHTML='<img class="artist-pic" src="'+(artist.picture_medium||artist.picture)+'" alt=""/><div class="artist-meta"><div class="artist-name">'+artist.name+'</div><div class="artist-fans">'+fansStr+'</div><button class="artist-play-btn" onclick="playArtistTop()"><svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg> Écouter</button></div>';
+    $('mainContent').appendChild(header);
+    // Top tracks
+    results=topTracks;currentList=topTracks;
+    const secTitle=document.createElement('div');
+    secTitle.className='section-header';
+    secTitle.innerHTML='<div class="section-title">Titres populaires</div>';
+    $('mainContent').appendChild(secTitle);
+    const grid=document.createElement('div');
+    grid.className='cards-grid';
+    grid.id='grid';
+    $('mainContent').appendChild(grid);
+    renderGrid(topTracks);
+    // Related artists
+    if(related.length){
+      const relTitle=document.createElement('div');
+      relTitle.className='section-header';
+      relTitle.style.marginTop='24px';
+      relTitle.innerHTML='<div class="section-title">Artistes similaires</div>';
+      $('mainContent').appendChild(relTitle);
+      const relRow=document.createElement('div');
+      relRow.className='h-scroll';
+      relRow.style.gap='16px';
+      related.forEach(r=>{
+        const chip=document.createElement('div');
+        chip.style.cssText='min-width:100px;text-align:center;cursor:pointer;transition:transform .12s;';
+        chip.onmouseover=()=>chip.style.transform='translateY(-2px)';
+        chip.onmouseout=()=>chip.style.transform='';
+        chip.innerHTML='<img src="'+(r.picture||'')+'" style="width:70px;height:70px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 6px;"/><div style="font-size:12px;font-weight:500;color:var(--text);">'+r.name+'</div>';
+        chip.onclick=()=>showArtistPage(r.name);
+        relRow.appendChild(chip);
+      });
+      $('mainContent').appendChild(relRow);
+    }
+  }catch(e){$('mainContent').innerHTML='<div class="empty-state"><div class="empty-icon">😕</div><div class="empty-text">'+e.message+'</div></div>';}
+}
+
+function playArtistTop(){if(currentList.length)playTrack(0);}
 
 async function loadGenreSection(idx){
   const c=$('homeSections');if(!c)return;
