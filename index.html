@@ -679,30 +679,46 @@ let usingPreview=false;
 
 async function findYouTubeId(track){
   if(track.id) return track.id;
-  const cacheKey='yt_id_'+(track.deezerId||track.title);
+  const cacheKey='yt_id_'+(track.deezerId||track.title||'');
+  if(!cacheKey||cacheKey==='yt_id_') { if(track.preview) return '__preview__'; throw new Error('Chanson introuvable'); }
   const cached=getCached(cacheKey);
   if(cached){track.id=cached;return cached;}
-  const q=(track.channel+' '+track.title).replace(/[\(\)\[\]\-]/g,' ').replace(/\s+/g,' ').trim();
-  // 1. Try Piped API (supports CORS, no quota, most reliable)
-  const pipedInstances=['https://pipedapi.kavin.rocks','https://pipedapi.r4fo.com','https://pipedapi.adminforge.de','https://api.piped.privacydev.net'];
-  for(const inst of pipedInstances){
-    try{
-      const res=await fetch(inst+'/search?q='+encodeURIComponent(q)+'&filter=music_songs',{signal:AbortSignal.timeout(5000)});
-      const data=await res.json();
-      if(data.items&&data.items.length>0){
-        const vid=data.items.find(i=>i.url&&i.url.includes('/watch?v='));
-        if(vid){
-          const videoId=vid.url.split('v=')[1];
-          if(videoId){
-            track.id=videoId;
-            setCache(cacheKey,videoId);
-            return videoId;
-          }
+  const q=(track.channel+' '+track.title).replace(/[\(\)\[\]\-\"]/g,' ').replace(/\s+/g,' ').trim();
+  // 1. Try Piped API instances (CORS ok, no quota)
+  const pipedInstances=[
+    'https://pipedapi-libre.kavin.rocks',
+    'https://pipedapi.leptons.xyz',
+    'https://api.piped.yt',
+    'https://pipedapi.drgns.space',
+    'https://pipedapi.owo.si',
+    'https://pipedapi.ducks.party',
+    'https://piped-api.codespace.cz',
+    'https://pipedapi.reallyaweso.me',
+    'https://pipedapi.darkness.services',
+    'https://pipedapi.orangenet.cc',
+  ];
+  // Try 3 random instances for speed
+  const shuffled=pipedInstances.sort(()=>Math.random()-0.5).slice(0,3);
+  const pipedPromises=shuffled.map(inst=>
+    fetch(inst+'/search?q='+encodeURIComponent(q)+'&filter=music_songs',{signal:AbortSignal.timeout(4000)})
+      .then(r=>r.json())
+      .then(data=>{
+        if(data.items&&data.items.length>0){
+          const vid=data.items.find(i=>i.url&&i.url.includes('/watch?v='));
+          if(vid){const id=vid.url.split('v=')[1];if(id)return id;}
         }
-      }
-    }catch(e){continue;}
+        return null;
+      }).catch(()=>null)
+  );
+  // Race: first instance to respond wins
+  const raceResult=await Promise.any(pipedPromises.map(p=>p.then(r=>{if(r)return r;throw new Error();})))
+    .catch(()=>null);
+  if(raceResult){
+    track.id=raceResult;
+    setCache(cacheKey,raceResult);
+    return raceResult;
   }
-  // 2. Fallback: YouTube API (uses quota but cached after first time)
+  // 2. Fallback: YouTube API
   try{
     const url='https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=1&q='+encodeURIComponent(q)+'&key='+YT_KEY;
     const res=await fetch(url,{signal:AbortSignal.timeout(5000)});
@@ -713,7 +729,7 @@ async function findYouTubeId(track){
       return track.id;
     }
   }catch(e){}
-  // 3. Final fallback: Deezer 30s preview
+  // 3. Deezer 30s preview
   if(track.preview) return '__preview__';
   throw new Error('Chanson introuvable');
 }
@@ -773,6 +789,7 @@ function toggleFavH(el,idx){
   const v=items[idx];
   const id=String(v.deezerId||v.id);
   const fi=favorites.findIndex(f=>String(f.deezerId||f.id)===id);
+  if(!id||id==='null'||id==='undefined')return;
   const ref=db.collection('users').doc(currentUser.uid).collection('favorites').doc(id);
   if(fi>=0){favorites.splice(fi,1);ref.delete();el.textContent='♡';el.classList.remove('liked');}
   else{v.addedAt=firebase.firestore.FieldValue.serverTimestamp();favorites.push(v);ref.set(v);el.textContent='♥';el.classList.add('liked');}
@@ -1061,6 +1078,7 @@ async function toggleFav(e){
   if(!v)return;
   const vid=String(v.deezerId||v.id||id);
   const fi=favorites.findIndex(f=>String(f.deezerId||f.id)===vid);
+  if(!vid||vid==='null'||vid==='undefined')return;
   const ref=db.collection('users').doc(currentUser.uid).collection('favorites').doc(vid);
   if(fi>=0){favorites.splice(fi,1);ref.delete();e.target.textContent='♡';e.target.classList.remove('liked');}
   else{v.addedAt=firebase.firestore.FieldValue.serverTimestamp();favorites.push(v);ref.set(v);e.target.textContent='♥';e.target.classList.add('liked');}
@@ -1195,7 +1213,7 @@ function renderPlSidebar(){
 // ── HISTORY ──
 async function addToHistory(v){
   history=history.filter(h=>h.id!==v.id);history.unshift(v);if(history.length>10)history.pop();renderHistory();
-  if(!isGuest)await db.collection('users').doc(currentUser.uid).collection('history').doc(v.id).set({...v,playedAt:firebase.firestore.FieldValue.serverTimestamp()});
+  const histId=String(v.deezerId||v.id||'');if(!isGuest&&histId)db.collection('users').doc(currentUser.uid).collection('history').doc(histId).set({...v,playedAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
 }
 function renderHistory(){
   const c=$('historyList');if(!c)return;c.innerHTML='';
