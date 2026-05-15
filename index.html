@@ -369,14 +369,14 @@ const GENRES=[
   {label:'🇯🇲 Reggae',     genreId:144},
   {label:'🎸 Metal',       genreId:464},
   {label:'🎶 Soul & Funk', genreId:169},
-  {label:'🎻 Folk',        genreId:466},
   {label:'🌎 Latino',      genreId:197},
   {label:'🎵 Variété FR',  genreId:52},
-  {label:'🌊 Chill',       q:'chill lofi beats relax study ambient meditation'},
-  {label:'🎧 DJ Mix',      q:'dj mix set house techno'},
-  {label:'💪 Workout',     q:'workout motivation gym training energy'},
-  {label:'🎉 Fête',        q:'party dance club hits'},
-  {label:'💔 Mélancolie',  q:'sad songs emotional melancholy'},
+  {label:'🌊 Chill',       playlistId:1401977015},
+  {label:'💪 Workout',     playlistId:1154685481},
+  {label:'🎉 Fête',        playlistId:60477608},
+  {label:'💔 Mélancolie',  playlistId:3338949242},
+  {label:'🎧 DJ Mix',      playlistId:814540571},
+  {label:'🕺 Années 80-90',playlistId:60994846},
 ];
 
 const HOME_SECTIONS=[
@@ -385,19 +385,19 @@ const HOME_SECTIONS=[
   {title:'🎤 Rap & Hip-Hop',        type:'genreChart', genreId:116},
   {title:'💜 R&B & Soul',           type:'genreChart', genreId:165},
   {title:'⚡ Électro & Dance',       type:'genreChart', genreId:106},
-  {title:'🎸 Rock',                 type:'genreChart', genreId:152},
   {title:'🌍 Afrobeats',            type:'genreChart', genreId:466},
+  {title:'🎸 Rock',                 type:'genreChart', genreId:152},
+  {title:'🌊 Chill & Lofi',         type:'playlist', playlistId:1401977015},
+  {title:'🎉 Ambiance fête',        type:'playlist', playlistId:60477608},
+  {title:'💪 Workout',              type:'playlist', playlistId:1154685481},
   {title:'🎷 Jazz',                 type:'genreChart', genreId:129},
-  {title:'🇯🇲 Reggae',              type:'genreChart', genreId:144},
-  {title:'🎶 Soul & Funk',          type:'genreChart', genreId:169},
   {title:'🌎 Latino',               type:'genreChart', genreId:197},
   {title:'🎵 Variété française',    type:'genreChart', genreId:52},
-  {title:'🌊 Chill & Lofi',         type:'search',  q:'chill lofi beats relax study ambient meditation'},
-  {title:'💪 Workout',              type:'search',  q:'workout motivation gym training energy power'},
-  {title:'🎉 Ambiance fête',        type:'search',  q:'party dance club hits summer'},
+  {title:'🇯🇲 Reggae',              type:'genreChart', genreId:144},
+  {title:'🎶 Soul & Funk',          type:'genreChart', genreId:169},
   {title:'🎹 Classique',            type:'genreChart', genreId:98},
   {title:'🎸 Metal',                type:'genreChart', genreId:464},
-  {title:'💔 Mélancolie',           type:'search',  q:'sad songs emotional melancholy heartbreak'},
+  {title:'💔 Mélancolie',           type:'playlist', playlistId:3338949242},
 ];
 
 // ── AUTH ──
@@ -853,6 +853,8 @@ async function loadGenreSection(idx){
     let raw;
     if(genre.genreId){
       raw=await deezerGenreChart(genre.genreId,50);
+    }else if(genre.playlistId){
+      raw=await deezerPlaylist(genre.playlistId,50);
     }else if(genre.q){
       raw=await deezerSearch(genre.q,40);
     }else{
@@ -883,6 +885,8 @@ async function loadMoreResults(){
     let data;
     if(genre.genreId){
       data=await jsonp('https://api.deezer.com/chart/'+genre.genreId+'/tracks?limit=24&index='+deezerOffset);
+    }else if(genre.playlistId){
+      data=await jsonp('https://api.deezer.com/playlist/'+genre.playlistId+'/tracks?limit=24&index='+deezerOffset);
     }else if(genre.q){
       data=await jsonp('https://api.deezer.com/search?q='+encodeURIComponent(genre.q)+'&limit=24&index='+deezerOffset);
     }else{
