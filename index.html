@@ -509,13 +509,21 @@ async function loadPersonalized(){
     persoItems=shuffle(persoItems).slice(0,15);
     const c=$('hscroll_perso');if(!c)return;
     c.innerHTML='';
+    c._items=persoItems;
     persoItems.forEach((v,i)=>{
+      const isFav=favorites.some(f=>(f.deezerId||f.id)===(v.deezerId||v.id));
       const card=document.createElement('div');
       card.className='h-card';
-      card.innerHTML='<div class="thumb-wrap"><img class="thumb-img" src="'+v.thumb+'" alt="" loading="lazy"/><div class="play-overlay"><svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg></div></div><div class="card-info"><div class="card-title">'+v.title+'</div><div class="card-ch" style="font-size:10.5px;">'+v.channel+'</div></div>';
-      card.onclick=()=>{currentList=persoItems;playTrack(i);};
+      card.innerHTML='<div class="thumb-wrap"><img class="thumb-img" src="'+v.thumb+'" alt="" loading="lazy"/><div class="play-overlay"><svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg></div></div><div class="card-info"><div class="card-title">'+v.title+'</div><div class="card-ch"><span class="artist-link" onclick="event.stopPropagation();showArtistPage(this.textContent)">'+v.channel+'</span><div class="h-card-actions"><span class="fav-btn'+(isFav?' liked':'')+'" data-i="'+i+'" onclick="event.stopPropagation();toggleFavH(this,'+i+')">'+(isFav?'\u2661':'\u2665')+'</span><span class="add-pl-btn" onclick="event.stopPropagation();openAddToPlH('+i+')">\uff0b</span></div></div></div>';
+      card.addEventListener('click',e=>{if(e.target.classList.contains('fav-btn')||e.target.classList.contains('add-pl-btn')||e.target.classList.contains('artist-link'))return;currentList=persoItems;playTrack(i);});
       c.appendChild(card);
     });
+    // Add arrows
+    const wrap=c.parentElement;
+    if(!wrap.classList.contains('scroll-wrap'))wrap.classList.add('scroll-wrap');
+    const la=document.createElement('div');la.className='scroll-arrow left';la.innerHTML='<svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>';la.onclick=()=>c.scrollBy({left:-300,behavior:'smooth'});
+    const ra=document.createElement('div');ra.className='scroll-arrow right';ra.innerHTML='<svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>';ra.onclick=()=>c.scrollBy({left:300,behavior:'smooth'});
+    wrap.appendChild(la);wrap.appendChild(ra);
   }catch(e){const c=$('hscroll_perso');if(c)c.innerHTML='';}
 }
 
@@ -780,7 +788,7 @@ async function showArtistPage(artistName){
     // Header
     const header=document.createElement('div');
     header.className='artist-header';
-    header.innerHTML='<img class="artist-pic" src="'+(artist.picture_medium||artist.picture)+'" alt=""/><div class="artist-meta"><div class="artist-name">'+artist.name+'</div><div class="artist-fans">'+fansStr+'</div><button class="artist-play-btn" onclick="playArtistTop()"><svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg> Écouter</button></div>';
+    header.innerHTML='<div style="display:flex;align-items:center;gap:16px;flex:1;min-width:0;"><img class="artist-pic" src="'+(artist.picture_medium||artist.picture)+'" alt=""/><div class="artist-meta"><div class="artist-name">'+artist.name+'</div><div class="artist-fans">'+fansStr+'</div><div style="display:flex;gap:8px;margin-top:10px;"><button class="artist-play-btn" onclick="playArtistTop()"><svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg> Écouter</button><button onclick="goHome()" style="background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:22px;padding:9px 16px;color:var(--text);font-size:13px;font-family:inherit;cursor:pointer;">← Retour</button></div></div></div>';
     $('mainContent').appendChild(header);
     // Top tracks
     results=topTracks;currentList=topTracks;
@@ -900,12 +908,12 @@ function parseItems(items){
 }
 
 function makeCard(v,i,list){
-  const isFav=favorites.some(f=>f.id===v.id);
-  const isNow=currentList[currentIdx]?.id===v.id;
+  const isFav=favorites.some(f=>(f.deezerId||f.id)===(v.deezerId||v.id));
+  const isNow=currentList[currentIdx]?.id===v.id||currentList[currentIdx]?.deezerId===v.deezerId;
   const card=document.createElement('div');
   card.className='card'+(isNow?' playing':'');
-  card.innerHTML=`<div class="thumb-wrap"><img class="thumb-img" src="${v.thumb}" alt="" loading="lazy"/><div class="play-overlay">${isNow&&isPlaying?'<svg width="24" height="24" viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>':'<svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>'}</div></div><div class="card-info"><div class="card-title">${v.title}</div><div class="card-ch"><span>${v.channel}</span><div class="card-actions"><span class="fav-btn${isFav?' liked':''}" data-id="${v.id}" data-i="${i}" onclick="toggleFav(event)">${isFav?'♥':'♡'}</span><span class="add-pl-btn" data-i="${i}" onclick="openAddToPl(event,${i})">＋</span></div></div></div>`;
-  card.addEventListener('click',e=>{if(e.target.classList.contains('fav-btn')||e.target.classList.contains('add-pl-btn'))return;currentList=list;playTrack(i);});
+  card.innerHTML=`<div class="thumb-wrap"><img class="thumb-img" src="${v.thumb}" alt="" loading="lazy"/><div class="play-overlay">${isNow&&isPlaying?'<svg width="24" height="24" viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>':'<svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>'}</div></div><div class="card-info"><div class="card-title">${v.title}</div><div class="card-ch"><span class="artist-link" onclick="event.stopPropagation();showArtistPage(this.textContent)">${v.channel}</span><div class="card-actions"><span class="fav-btn${isFav?' liked':''}" data-id="${v.deezerId||v.id}" data-i="${i}" onclick="toggleFav(event)">${isFav?'♥':'♡'}</span><span class="add-pl-btn" data-i="${i}" onclick="openAddToPl(event,${i})">＋</span></div></div></div>`;
+  card.addEventListener('click',e=>{if(e.target.classList.contains('fav-btn')||e.target.classList.contains('add-pl-btn')||e.target.classList.contains('artist-link'))return;currentList=list;playTrack(i);});
   return card;
 }
 
@@ -973,10 +981,12 @@ async function toggleFav(e){
   e.stopPropagation();
   if(isGuest){alert('Crée un compte pour sauvegarder tes favoris !');return;}
   const id=e.target.dataset.id,i=parseInt(e.target.dataset.i),v=currentList[i];
-  const fi=favorites.findIndex(f=>f.id===id);
-  const ref=db.collection('users').doc(currentUser.uid).collection('favorites').doc(id);
-  if(fi>=0){favorites.splice(fi,1);await ref.delete();e.target.textContent='♡';e.target.classList.remove('liked');}
-  else{v.addedAt=firebase.firestore.FieldValue.serverTimestamp();favorites.push(v);await ref.set(v);e.target.textContent='♥';e.target.classList.add('liked');}
+  if(!v)return;
+  const vid=String(v.deezerId||v.id||id);
+  const fi=favorites.findIndex(f=>String(f.deezerId||f.id)===vid);
+  const ref=db.collection('users').doc(currentUser.uid).collection('favorites').doc(vid);
+  if(fi>=0){favorites.splice(fi,1);ref.delete();e.target.textContent='♡';e.target.classList.remove('liked');}
+  else{v.addedAt=firebase.firestore.FieldValue.serverTimestamp();favorites.push(v);ref.set(v);e.target.textContent='♥';e.target.classList.add('liked');}
 }
 
 function showFavs(){
